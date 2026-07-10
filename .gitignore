@@ -1,1 +1,8 @@
+# Your specific folders
 .venv/
+.env/
+
+# Standard Python virtual environments
+venv/
+ENV/
+env/

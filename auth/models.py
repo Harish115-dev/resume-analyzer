@@ -2,7 +2,7 @@ import bcrypt
 from db.mongodb import db
 from datetime import datetime, timezone
 
-class user(db.Document):
+class User(db.Document):
     meta = {
     "collection": "users",
     "indexes": ["email"]
@@ -24,4 +24,4 @@ class user(db.Document):
 
     def save(self, *args, **kwargs):
         self.updated_at=datetime.now(timezone.utc)
-        return super(user,self).save(*args,**kwargs)
+        return super(User,self).save(*args,**kwargs)

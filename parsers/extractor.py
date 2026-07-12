@@ -24,7 +24,7 @@ def extract_text(filepath):
     elif ext == ".docx":
         return _extract_from_docx(filepath)
     else :
-        raise ValueError("unsupported file tye {ext}")
+        raise ValueError(f"unsupported file tye:{ext}")
     
 
 

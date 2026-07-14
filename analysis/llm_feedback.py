@@ -141,36 +141,3 @@ def generate_feedback(ats_result:dict,jd_match_result:dict | None=None)->dict:
             "source": "fallback",
             "error": f"Unexpected error: {e}",
         }
-if __name__ == "__main__":
-    from parsers.section_splitter import split_section
-    from analysis.ats_scorer import score_resume
-
-    sample_resume = """
-JOHN MEHTA
-john.mehta@email.com | (555) 234-8890 | linkedin.com/in/johnmehta
-
-SUMMARY
-Full-stack software engineer with 6 years of experience.
-
-EXPERIENCE
-Senior Software Engineer, Cloudwave Technologies (2021 - Present)
-- Led a team of 5 engineers building a microservices platform on AWS
-- Migrated legacy SQL Server database to PostgreSQL, reducing query latency by 35%
-- Worked on various backend features
-
-EDUCATION
-B.S. Computer Science, State University (2016)
-
-SKILLS
-Python, AWS, Docker, SQL
-"""
-    sections = split_section(sample_resume)
-    ats_result = score_resume(sample_resume, sections)
-
-    result = generate_feedback(ats_result)
-    print(f"Source: {result['source']}")
-    if result["error"]:
-        print(f"Error: {result['error']}")
-    print("\n--- Feedback ---")
-    print(result["feedback"])
-

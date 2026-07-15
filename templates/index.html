@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resume Analyzer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="wrap">
+    <div class="tag-line">RESUME ANALYZER</div>
+    <h1>Get your resume read like a<br><span class="accent">recruiter</span> would.</h1>
+    <p class="subhead">
+      Upload a resume for a full scan: missing sections, weak phrasing, unquantified wins,
+      and — if you paste a job posting — exactly which skills you're missing.
+    </p>
+
+    {% if error %}
+      <div class="flash">{{ error }}</div>
+    {% endif %}
+
+    <form class="panel" action="{{ url_for('analysis.analyze_web') }}" method="post" enctype="multipart/form-data" id="analyze-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="field">
+        <label class="field-label">Resume file</label>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="resume" name="resume" accept=".pdf,.docx" required>
+          <div class="dropzone-text">Drop a file here, or click to browse</div>
+          <div class="dropzone-sub">PDF · DOCX — max 8MB</div>
+          <div id="file-chosen"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Job description <span class="optional-tag">optional — enables skill match</span></label>
+        <textarea name="job_description" placeholder="Paste the job posting here to score how well your resume matches it..."></textarea>
+      </div>
+
+      <button class="submit" type="submit" id="submit-btn">
+        <span id="submit-text">Run analysis</span>
+      </button>
+    </form>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

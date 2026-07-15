@@ -257,7 +257,10 @@ def check_jd_match(jd_match_result: dict | None) -> dict:
     
 
 def score_resume(resume_text: str, sections: dict, jd_match_result: dict | None = None) -> dict:
-    experience_text = sections.get("experience", "")
+    experience_text = "\n".join(
+        sections.get(key, "") for key in ("experience", "projects") if sections.get(key)
+    )
+
     sections_result = check_sections(sections)
     contact_result = check_contact_info(resume_text)
     quantified_result = check_quantified_achievements(experience_text)
@@ -276,8 +279,7 @@ def score_resume(resume_text: str, sections: dict, jd_match_result: dict | None 
         component_scores.append(jd_result["score"])
         overall = sum(component_scores)
     else:
-        # No JD provided: redistribute jd_match's 25-point weight
-        # proportionally across the other checks instead of just losing it.
+
         non_jd_weight_sum = sum(w for k, w in WEIGHTS.items() if k != "jd_match")
         scale_factor = 100 / non_jd_weight_sum
         overall = sum(component_scores) * scale_factor
@@ -301,4 +303,3 @@ def score_resume(resume_text: str, sections: dict, jd_match_result: dict | None 
             "jd_match": jd_result,
         },
     }
-

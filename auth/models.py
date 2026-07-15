@@ -1,6 +1,8 @@
+#create user model schema
 import bcrypt 
 from db.mongodb import db
 from datetime import datetime, timezone
+
 
 class User(db.Document):
     meta = {

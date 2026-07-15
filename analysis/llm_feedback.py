@@ -3,6 +3,7 @@ from groq import Groq
 from dotenv import load_dotenv
 import os
 import json
+from groq import Groq, APIError, RateLimitError
 
 
 load_dotenv()
@@ -141,3 +142,9 @@ def generate_feedback(ats_result:dict,jd_match_result:dict | None=None)->dict:
             "source": "fallback",
             "error": f"Unexpected error: {e}",
         }
+    except RateLimitError as e:
+        print(f"[llm_feedback] Rate limit: {e}")
+        return {...}
+    except APIError as e:
+        print(f"[llm_feedback] API error: {e}")
+        return {...}

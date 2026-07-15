@@ -1,0 +1,15 @@
+<nav class="topnav">
+  <a href="{{ url_for('analysis.index') }}" class="topnav-brand">Resume Analyzer</a>
+  <div class="topnav-right">
+    {% if session.user_id %}
+      <span class="topnav-user">Hi, {{ session.user_name }}</span>
+      <form action="{{ url_for('auth.logout') }}" method="post" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="topnav-link topnav-logout">Log out</button>
+      </form>
+    {% else %}
+      <a href="{{ url_for('auth.login_page') }}" class="topnav-link">Log in</a>
+      <a href="{{ url_for('auth.register_page') }}" class="topnav-link topnav-cta">Register</a>
+    {% endif %}
+  </div>
+</nav>

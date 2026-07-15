@@ -1,38 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Analysis Results — Resume Analyzer</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
-  <div class="wrap">
-    <div class="tag-line">RESUME ANALYZER · SCAN COMPLETE</div>
+  {% include "_nav.html" %}
 
-    <div class="score-header">
-      <div class="score-circle">
-        <span class="score-num">{{ result.ats_result.overall_score }}</span>
-        <span class="score-max">/ 100</span>
+  <div class="results-shell">
+    <!-- Sidebar -->
+    <aside class="results-sidebar">
+      <div class="sidebar-score">
+        <div class="score-circle">
+          <span class="score-num">{{ result.ats_result.overall_score }}</span>
+          <span class="score-max">/ 100</span>
+        </div>
+        <div class="score-label">Overall Score</div>
+        <div class="sidebar-filename" title="{{ filename }}">{{ filename }}</div>
       </div>
-      <div class="score-meta">
-        <div class="filename">{{ filename }}</div>
-        <h1>Overall Resume Score</h1>
-        <p class="subhead">
-          {% if result.ats_result.overall_score >= 80 %}
-            Strong resume — small refinements will polish it further.
-          {% elif result.ats_result.overall_score >= 60 %}
-            Solid foundation, but a few gaps are holding it back.
-          {% elif result.ats_result.overall_score >= 40 %}
-            Several structural and content issues to address.
-          {% else %}
-            Needs significant work — see feedback below.
-          {% endif %}
-        </p>
-      </div>
+      {% for label, val, max in cats %}
+      {% set pct = ((val / max * 100) if max else 0) | round | int %}
+      {% set tier = 'low' if pct < 40 else ('mid' if pct < 75 else 'high' ) %} <div class="cat-row">
+        <div class="cat-row-top">
+          <span class="cat-label">{{ label }}</span>
+          <span class="cat-badge {{ tier }}">{{ pct }}%</span>
+        </div>
+        <div class="cat-track">
+          <div class="cat-track-fill {{ tier }}" style="width: {{ pct }}%;"></div>
+        </div>
+  </div>
+  {% endfor %}
+
+  <div class="sidebar-categories">
+    {% set cats = [
+    ("Sections", result.ats_result.breakdown.sections, 20),
+    ("Contact", result.ats_result.breakdown.contact, 10),
+    ("Quantified", result.ats_result.breakdown.quantified, 20),
+    ("Action verbs", result.ats_result.breakdown.action_verbs, 15),
+    ("Word count", result.ats_result.breakdown.word_count, 10),
+    ] %}
+    {% if result.jd_match %}
+    {% set cats = cats + [("JD match", result.ats_result.breakdown.jd_match, 25)] %}
+    {% endif %}
+
+    {% for label, val, max in cats %}
+    {% set pct = ((val / max * 100) if max else 0) | round | int %}
+    <div class="cat-row">
+      <span class="cat-label">{{ label }}</span>
+      <span class="cat-badge {{ 'low' if pct < 40 else ('mid' if pct < 75 else 'high') }}">{{ pct }}%</span>
     </div>
+    {% endfor %}
+  </div>
 
-    <div class="grid">
+  <a class="back-link" href="{{ url_for('analysis.index') }}">← Analyze another resume</a>
+  </aside>
+
+  <!-- Main content -->
+  <main class="results-main">
+    <div class="scan-eyebrow">SCAN COMPLETE</div>
+    <h1>Resume Analysis</h1>
+    <p class="subhead" style="margin-bottom: 32px;">
+      {% if result.ats_result.overall_score >= 80 %}
+      Strong resume — small refinements will polish it further.
+      {% elif result.ats_result.overall_score >= 60 %}
+      Solid foundation, but a few gaps are holding it back.
+      {% elif result.ats_result.overall_score >= 40 %}
+      Several structural and content issues to address.
+      {% else %}
+      Needs significant work — see feedback below.
+      {% endif %}
+    </p>
+
+    <div class="row-grid">
       <div class="panel card">
         <h3>Sections detected</h3>
         <ul class="check-list">
@@ -48,30 +91,26 @@
       <div class="panel card">
         <h3>Contact info</h3>
         <ul class="check-list">
-          <li><span class="mark {{ 'yes' if result.ats_result.details.contact.email else 'no' }}">{{ '✓' if result.ats_result.details.contact.email else '✕' }}</span> Email</li>
-          <li><span class="mark {{ 'yes' if result.ats_result.details.contact.phone else 'no' }}">{{ '✓' if result.ats_result.details.contact.phone else '✕' }}</span> Phone</li>
-          <li><span class="mark {{ 'yes' if result.ats_result.details.contact.linkedin else 'no' }}">{{ '✓' if result.ats_result.details.contact.linkedin else '✕' }}</span> LinkedIn</li>
+          <li><span class="mark {{ 'yes' if result.ats_result.details.contact.email else 'no' }}">{{ '✓' if
+              result.ats_result.details.contact.email else '✕' }}</span> Email</li>
+          <li><span class="mark {{ 'yes' if result.ats_result.details.contact.phone else 'no' }}">{{ '✓' if
+              result.ats_result.details.contact.phone else '✕' }}</span> Phone</li>
+          <li><span class="mark {{ 'yes' if result.ats_result.details.contact.linkedin else 'no' }}">{{ '✓' if
+              result.ats_result.details.contact.linkedin else '✕' }}</span> LinkedIn</li>
         </ul>
       </div>
 
       <div class="panel card">
         <h3>Writing quality</h3>
-        <div class="stat-row"><span>Word count</span><span class="val">{{ result.ats_result.details.word_count.word_count }}</span></div>
-        <div class="stat-row"><span>Strong verbs used</span><span class="val">{{ result.ats_result.details.action_verbs.strong_verbs_used|length }}</span></div>
-        <div class="stat-row"><span>Weak phrases found</span><span class="val">{{ result.ats_result.details.action_verbs.weak_phrases_found|length }}</span></div>
-        <div class="stat-row"><span>Quantified bullets</span><span class="val">{{ result.ats_result.details.quantified.quantified_bullets }} / {{ result.ats_result.details.quantified.total_bullets }}</span></div>
-      </div>
-
-      <div class="panel card">
-        <h3>Score breakdown</h3>
-        <div class="stat-row"><span>Sections</span><span class="val">{{ result.ats_result.breakdown.sections }} / 20</span></div>
-        <div class="stat-row"><span>Contact</span><span class="val">{{ result.ats_result.breakdown.contact }} / 10</span></div>
-        <div class="stat-row"><span>Quantified</span><span class="val">{{ result.ats_result.breakdown.quantified }} / 20</span></div>
-        <div class="stat-row"><span>Action verbs</span><span class="val">{{ result.ats_result.breakdown.action_verbs }} / 15</span></div>
-        <div class="stat-row"><span>Word count</span><span class="val">{{ result.ats_result.breakdown.word_count }} / 10</span></div>
-        {% if result.jd_match %}
-        <div class="stat-row"><span>JD match</span><span class="val">{{ result.ats_result.breakdown.jd_match }} / 25</span></div>
-        {% endif %}
+        <div class="stat-row"><span>Word count</span><span class="val">{{
+            result.ats_result.details.word_count.word_count }}</span></div>
+        <div class="stat-row"><span>Strong verbs</span><span class="val">{{
+            result.ats_result.details.action_verbs.strong_verbs_used|length }}</span></div>
+        <div class="stat-row"><span>Weak phrases</span><span class="val">{{
+            result.ats_result.details.action_verbs.weak_phrases_found|length }}</span></div>
+        <div class="stat-row"><span>Quantified</span><span class="val">{{
+            result.ats_result.details.quantified.quantified_bullets }} / {{
+            result.ats_result.details.quantified.total_bullets }}</span></div>
       </div>
     </div>
 
@@ -80,25 +119,26 @@
       <h3>Job description match — {{ result.jd_match.coverage_pct }}% skill coverage</h3>
       <p class="subhead-sm">TF-IDF text similarity: {{ result.jd_match.similarity_score }}%</p>
 
-      <div class="kw-block">
-        <div class="kw-label matched">Matched skills</div>
-        <div class="chip-row">
-          {% for skill in result.jd_match.matched_skills %}
-          <span class="chip matched">{{ skill }}</span>
-          {% else %}
-          <span class="subhead-sm">None matched.</span>
-          {% endfor %}
+      <div class="row-grid row-grid-2">
+        <div class="kw-block" style="margin-top: 0;">
+          <div class="kw-label matched">Matched skills</div>
+          <div class="chip-row">
+            {% for skill in result.jd_match.matched_skills %}
+            <span class="chip matched">{{ skill }}</span>
+            {% else %}
+            <span class="subhead-sm">None matched.</span>
+            {% endfor %}
+          </div>
         </div>
-      </div>
-
-      <div class="kw-block">
-        <div class="kw-label missing">Missing skills</div>
-        <div class="chip-row">
-          {% for skill in result.jd_match.missing_skills %}
-          <span class="chip missing">{{ skill }}</span>
-          {% else %}
-          <span class="subhead-sm">None — full coverage!</span>
-          {% endfor %}
+        <div class="kw-block" style="margin-top: 0;">
+          <div class="kw-label missing">Missing skills</div>
+          <div class="chip-row">
+            {% for skill in result.jd_match.missing_skills %}
+            <span class="chip missing">{{ skill }}</span>
+            {% else %}
+            <span class="subhead-sm">None — full coverage!</span>
+            {% endfor %}
+          </div>
         </div>
       </div>
     </div>
@@ -109,10 +149,22 @@
       {% if result.feedback.source == 'fallback' %}
       <p class="subhead-sm fallback-note">Generated from rule-based analysis (AI feedback unavailable this run).</p>
       {% endif %}
-      <div class="feedback-text">{{ result.feedback.feedback }}</div>
-    </div>
 
-    <a class="back-link" href="{{ url_for('analysis.index') }}">← Analyze another resume</a>
+      {% if result.feedback.parsed.summary %}
+      <p class="feedback-summary">{{ result.feedback.parsed.summary }}</p>
+      {% endif %}
+
+      <ul class="suggestion-list">
+        {% for item in result.feedback.parsed.suggestions %}
+        <li>
+          <span class="suggestion-num">{{ loop.index }}</span>
+          <span class="suggestion-text">{{ item }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </main>
   </div>
 </body>
+
 </html>

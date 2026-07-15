@@ -7,9 +7,15 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+  {% include "_nav.html" %}
   <div class="wrap">
-    <div class="tag-line">RESUME ANALYZER</div>
-    <h1>Get your resume read like a<br><span class="accent">recruiter</span> would.</h1>
+    <div class="scan-eyebrow">SCANNER IDLE — AWAITING FILE</div>
+
+    <h1 class="terminal-head">
+      <span class="prompt">$</span> analyze --file resume.pdf<br>
+      <span class="accent">--verdict recruiter-honest</span>
+    </h1>
+
     <p class="subhead">
       Upload a resume for a full scan: missing sections, weak phrasing, unquantified wins,
       and — if you paste a job posting — exactly which skills you're missing.
@@ -38,7 +44,7 @@
       </div>
 
       <button class="submit" type="submit" id="submit-btn">
-        <span id="submit-text">Run analysis</span>
+        <span id="submit-text">Run scan</span>
       </button>
     </form>
   </div>

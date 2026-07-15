@@ -28,24 +28,52 @@ def register():
     name = request.form.get("name")
     email = request.form.get("email")
     password = request.form.get("password")
+    
+    if not name or not email or not password:
+        return render_template("register.html", error="All fields are required.")
+    
+    if len(password) < 8:
+        return render_template("register.html", error="Password must be at least 8 characters.")
+    if User.objects(email=email).first():
+        return render_template("register.html", error="An account with that email already exists.")
+    
+    user = User(name=name, email=email)
+    user.set_password(password)
+    user.save()
+    
+    #auto login after registration
 
+    session["user_id"] = str(user.id)
+    session["user_name"] = user.name
+    return redirect(url_for("analysis.index"))
 
-
-
-
-
-
-
-    return jsonify({"message": "User registered successfully!"}), 201
 
 #login route
+@auth_bp.route('/login', methods=['GET'])
+def login_page():
+    return render_template("login.html")
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    # ... your login code ...
-    return jsonify({"message": "Logged in successfully!"}), 200
+    email = request.form.get("email", "").strip().lower()
+    password = request.form.get("password", "")
+    
+    generic_error="invalid email or password"
+    
+    if not email or not password:
+        return render_template("login.html", error=generic_error)
+    user = User.objects(email=email).first()
+    if not user or not user.check_password(password):
+        return render_template("login.html", error=generic_error)
+
+    session["user_id"] = str(user.id)
+    session["user_name"] = user.name
+
+    return redirect(url_for("analysis.index"))
+
+
 
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
-    # ... your logout code ...
-    return jsonify({"message": "Logged out successfully!"}), 200
+    session.clear()
+    return redirect(url_for("auth.login_page"))

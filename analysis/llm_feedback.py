@@ -10,7 +10,6 @@ load_dotenv()
 API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=API_KEY) if API_KEY else None
 MODEL = "llama-3.1-8b-instant"
-
 def _build_prompt(ats_result: dict, jd_match_result: dict | None) -> str:
     details = ats_result["details"]
     context={

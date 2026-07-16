@@ -1,48 +1,68 @@
-
-from groq import Groq
+from groq import Groq, APIError, RateLimitError
 from dotenv import load_dotenv
 import os
 import json
-from groq import Groq, APIError, RateLimitError
-
 
 load_dotenv()
+
 API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=API_KEY) if API_KEY else None
-MODEL = "llama-3.1-8b-instant"
+MODEL = "llama-3.3-70b-versatile"
+
+
 def _build_prompt(ats_result: dict, jd_match_result: dict | None) -> str:
     details = ats_result["details"]
-    context={
-        "overall_score":ats_result["overall_score"],
-        "breakdown": ats_result["breakdown"],
-        "section_missing":[ name for name,present in details["sections"]["present"].items()
-                           if not present
-                           ],
-        "contact_missing":[k for k in ("phone","email","linkedin") if not details["contact"][k]],
+    breakdown = ats_result["breakdown"]
+
+    category_maxes = {"sections": 20, "contact": 10, "quantified": 20, "action_verbs": 15, "word_count": 10}
+    if jd_match_result:
+        category_maxes["jd_match"] = 25
+
+    weak_categories = []
+    strong_categories = []
+    for cat, max_val in category_maxes.items():
+        score = breakdown.get(cat)
+        if score is None:
+            continue
+        pct = (score / max_val) * 100 if max_val else 0
+        if pct < 60:
+            weak_categories.append({"category": cat, "score": score, "max": max_val, "pct": round(pct, 1)})
+        else:
+            strong_categories.append({"category": cat, "score": score, "max": max_val, "pct": round(pct, 1)})
+
+    context = {
+        "overall_score": ats_result["overall_score"],
+        "weak_categories": weak_categories,      # only these should drive suggestions
+        "strong_categories": strong_categories,  # mention as strengths, don't suggest "improving" these
+        "section_missing": [
+            name for name, present in details["sections"]["present"].items()
+            if not present
+        ],
+        "contact_missing": [k for k in ("phone", "email", "linkedin") if not details["contact"][k]],
         "quantified_ratio": details["quantified"]["ratio"],
         "strong_verbs_used": details["action_verbs"]["strong_verbs_used"],
         "weak_phrases_found": details["action_verbs"]["weak_phrases_found"],
         "word_count": details["word_count"]["word_count"],
-
     }
     if jd_match_result:
-        context["jd_match"]={
+        context["jd_match"] = {
             "coverage_pct": jd_match_result.get("coverage_pct"),
             "missing_skills": jd_match_result.get("missing_skills", []),
             "matched_skills": jd_match_result.get("matched_skills", []),
         }
+
     prompt = f"""You are a resume reviewer. Below is structured analysis data for a resume,
 already computed by rule-based checks. Do NOT invent scores, numbers, or facts not present
 in this data — only reference what's given.
 
-IMPORTANT: Each category in "breakdown" is scored out of a DIFFERENT maximum, not out of 100:
-- sections: out of 20
-- contact: out of 10
-- quantified: out of 20
-- action_verbs: out of 15
-- word_count: out of 10
-- jd_match: out of 25 (if present)
-Only "overall_score" is out of 100. Do not describe category scores as "out of 100."
+"weak_categories" lists categories that scored below 60% of their maximum — these are
+the ONLY categories you should suggest improving. "strong_categories" scored 60%+ — you
+may mention these briefly as strengths in the summary, but do NOT suggest "improving" or
+"adding more" to anything in strong_categories, even if it's not a perfect 100%.
+
+"quantified_ratio" is a fraction between 0 and 1 (e.g. 0.84 means 84%) — describe it as
+a percentage, and only bring it up as an improvement area if "quantified" appears in
+weak_categories, not strong_categories.
 
 Do NOT recommend action verbs that already appear in "strong_verbs_used" — only suggest
 verbs or categories that are absent.
@@ -55,10 +75,19 @@ DATA:
 
 Write feedback in this exact structure:
 1. A 2-3 sentence summary of the resume's overall strength, referencing the actual overall_score out of 100.
-2. A bulleted list of 3-5 concrete, prioritized suggestions, each grounded in a specific
-   data point above.
+2. A bulleted list of 3-5 concrete, prioritized suggestions, each grounded ONLY in
+   weak_categories or other explicitly-listed gaps above (missing sections, missing
+   contact, weak phrases, missing JD skills). Do not suggest improving anything in
+   strong_categories.
 
 Be specific and concrete. Keep the total response under 200 words."""
+
+    if not jd_match_result:
+        prompt += (
+            "\n\nNo job description was provided for this analysis — do NOT mention "
+            "JD match, job description alignment, coverage, or similar, since that "
+            "data doesn't exist for this resume."
+        )
 
     return prompt
 
@@ -105,13 +134,15 @@ def fallback_feedback(ats_result: dict, jd_match_result: dict | None) -> str:
 
     return "\n".join(lines)
 
-def generate_feedback(ats_result:dict,jd_match_result:dict | None=None)->dict:
-    if not client :
-        return{
-            "feedback":fallback_feedback(ats_result,jd_match_result),
+
+def generate_feedback(ats_result: dict, jd_match_result: dict | None = None) -> dict:
+    if not client:
+        return {
+            "feedback": fallback_feedback(ats_result, jd_match_result),
             "source": "fallback",
             "error": "GROQ_API_KEY not set",
         }
+
     prompt = _build_prompt(ats_result, jd_match_result)
 
     try:
@@ -123,27 +154,25 @@ def generate_feedback(ats_result:dict,jd_match_result:dict | None=None)->dict:
         )
         text = response.choices[0].message.content.strip()
         return {"feedback": text, "source": "llm", "error": None}
+
     except RateLimitError as e:
+        print(f"[llm_feedback] Rate limit: {e}")
         return {
             "feedback": fallback_feedback(ats_result, jd_match_result),
             "source": "fallback",
             "error": f"Groq rate limit hit: {e}",
         }
     except APIError as e:
+        print(f"[llm_feedback] API error: {e}")
         return {
             "feedback": fallback_feedback(ats_result, jd_match_result),
             "source": "fallback",
             "error": f"Groq API error: {e}",
         }
     except Exception as e:
+        print(f"[llm_feedback] Unexpected error: {e}")
         return {
             "feedback": fallback_feedback(ats_result, jd_match_result),
             "source": "fallback",
             "error": f"Unexpected error: {e}",
         }
-    except RateLimitError as e:
-        print(f"[llm_feedback] Rate limit: {e}")
-        return {...}
-    except APIError as e:
-        print(f"[llm_feedback] API error: {e}")
-        return {...}

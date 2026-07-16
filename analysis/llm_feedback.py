@@ -50,46 +50,57 @@ def _build_prompt(ats_result: dict, jd_match_result: dict | None) -> str:
             "missing_skills": jd_match_result.get("missing_skills", []),
             "matched_skills": jd_match_result.get("matched_skills", []),
         }
+    context_readable = {
+    "overall_score": context["overall_score"],
+    "categories_needing_improvement": context["weak_categories"],
+    "categories_that_are_strengths": context["strong_categories"],
+    "percentage_of_bullets_with_measurable_results": round(context["quantified_ratio"] * 100),
+    "action_verbs_already_used": context["strong_verbs_used"],
+    "missing_contact_fields": context["contact_missing"],
+}
 
-    prompt = f"""You are a resume reviewer. Below is structured analysis data for a resume,
+prompt = f"""You are a resume reviewer. Below is structured analysis data for a resume,
 already computed by rule-based checks. Do NOT invent scores, numbers, or facts not present
 in this data — only reference what's given.
 
-"weak_categories" lists categories that scored below 60% of their maximum — these are
-the ONLY categories you should suggest improving. "strong_categories" scored 60%+ — you
-may mention these briefly as strengths in the summary, but do NOT suggest "improving" or
-"adding more" to anything in strong_categories, even if it's not a perfect 100%.
+"categories_needing_improvement" lists categories that scored below 60% of their maximum —
+these are the ONLY categories you should suggest improving. "categories_that_are_strengths"
+scored 60%+ — you may mention these briefly as strengths in the summary, but do NOT suggest
+"improving" or "adding more" to anything in categories_that_are_strengths, even if it's not
+a perfect 100%.
 
-"quantified_ratio" is a fraction between 0 and 1 (e.g. 0.84 means 84%) — describe it as
-a percentage, and only bring it up as an improvement area if "quantified" appears in
-weak_categories, not strong_categories.
+"percentage_of_bullets_with_measurable_results" is already given as a percentage — only
+bring it up as an improvement area if "quantified" appears in categories_needing_improvement,
+not categories_that_are_strengths.
 
-Do NOT recommend action verbs that already appear in "strong_verbs_used" — only suggest
-verbs or categories that are absent.
+Do NOT recommend action verbs that already appear in "action_verbs_already_used" — only
+suggest verbs or categories that are absent.
 
-Do NOT suggest adding contact info that is not listed in "contact_missing" — if
-"contact_missing" is empty, do not mention contact info at all.
+Do NOT suggest adding contact info that is not listed in "missing_contact_fields" — if
+"missing_contact_fields" is empty, do not mention contact info at all.
+
+Never write internal field or key names verbatim in your output. Always translate data
+into plain, natural language a human resume-writer would use — describe metrics and
+categories in your own words, not as code-style labels.
 
 DATA:
-{json.dumps(context, indent=2)}
+{json.dumps(context_readable, indent=2)}
 
 Write feedback in this exact structure:
 1. A 2-3 sentence summary of the resume's overall strength, referencing the actual overall_score out of 100.
 2. A bulleted list of 3-5 concrete, prioritized suggestions, each grounded ONLY in
-   weak_categories or other explicitly-listed gaps above (missing sections, missing
-   contact, weak phrases, missing JD skills). Do not suggest improving anything in
-   strong_categories.
+   categories_needing_improvement or other explicitly-listed gaps above (missing sections,
+   missing contact, weak phrases, missing JD skills). Do not suggest improving anything in
+   categories_that_are_strengths.
 
 Be specific and concrete. Keep the total response under 200 words."""
 
-    if not jd_match_result:
-        prompt += (
-            "\n\nNo job description was provided for this analysis — do NOT mention "
-            "JD match, job description alignment, coverage, or similar, since that "
-            "data doesn't exist for this resume."
-        )
-
-    return prompt
+if not jd_match_result:
+    prompt += (
+        "\n\nNo job description was provided for this analysis — do NOT mention "
+        "JD match, job description alignment, coverage, or similar, since that "
+        "data doesn't exist for this resume."
+    )
 
 
 def fallback_feedback(ats_result: dict, jd_match_result: dict | None) -> str:
